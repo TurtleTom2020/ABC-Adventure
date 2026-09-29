@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -24,6 +25,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,7 +65,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
  }
 }
 @Composable fun Home(themed:Boolean,stars:Int,learned:Int,go:(String)->Unit,setTheme:(Boolean)->Unit){ Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){
- Spacer(Modifier.height(12.dp)); Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(28.dp),colors=CardDefaults.cardColors(containerColor=if(themed) Color(0xFFFFD600) else MaterialTheme.colorScheme.primaryContainer)){Column(Modifier.fillMaxWidth().padding(22.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(if(themed)"⭐ SPRINGFIELD ABC ⭐" else "🌈 ABC ADVENTURE 🌈",fontSize=30.sp,fontWeight=FontWeight.Black,textAlign=TextAlign.Center);Text(if(themed)"Welcome to Springfield!" else "Let’s learn something brilliant!",fontSize=17.sp,fontWeight=FontWeight.Bold)}}
+ Spacer(Modifier.height(12.dp)); if(!themed){Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(28.dp)){Image(painterResource(uk.co.turtletom.abcadventure.R.drawable.abc_logo_small),contentDescription="ABC Adventure",modifier=Modifier.fillMaxWidth().height(210.dp),contentScale=ContentScale.Fit)}}else{Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(28.dp),colors=CardDefaults.cardColors(containerColor=Color(0xFFFFD600))){Column(Modifier.fillMaxWidth().padding(22.dp),horizontalAlignment=Alignment.CenterHorizontally){Text("⭐ SPRINGFIELD ABC ⭐",fontSize=30.sp,fontWeight=FontWeight.Black,textAlign=TextAlign.Center);Text("Welcome to Springfield!",fontSize=17.sp,fontWeight=FontWeight.Bold)}}}
  Text(if(themed)"🍩  Learn • Laugh • Play  🍩" else "🔤 Learn  •  🔊 Listen  •  🎮 Play",fontSize=17.sp,fontWeight=FontWeight.Bold); Row(verticalAlignment=Alignment.CenterVertically){Text("ABC Adventure");Switch(checked=themed,onCheckedChange=setTheme);Text("Springfield")}; Card(shape=RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.secondaryContainer)){Text("⭐ "+stars+" stars     🏆 "+learned+"/26 letters",Modifier.padding(horizontal=20.dp,vertical=12.dp),fontSize=18.sp,fontWeight=FontWeight.Black)}
  BigButton("🔤  Learn A–Z"){go("learn")}; BigButton("🔊  Letter Sounds"){go("learn")}; BigButton("🎯  Find the Letter"){go("quiz")}; BigButton("🧩  Match It"){go("match")}; BigButton("✏️  Writing Practice"){go("tracepick")}
 }}
