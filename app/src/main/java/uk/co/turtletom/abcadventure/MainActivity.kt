@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 }}
 @Composable fun BigButton(text:String,onClick:()->Unit)=Button(onClick,Modifier.fillMaxWidth().height(66.dp),shape=RoundedCornerShape(24.dp),elevation=ButtonDefaults.buttonElevation(defaultElevation=5.dp)){Text(text,fontSize=20.sp,fontWeight=FontWeight.Black)}
 @Composable fun Letters(list:List<LetterItem>,learned:Set<String>,back:()->Unit,choose:(LetterItem)->Unit){Column(Modifier.fillMaxSize().padding(16.dp)){TextButton(back){Text("← Home")};Text("Choose a letter",fontSize=30.sp,fontWeight=FontWeight.Bold);LazyVerticalGrid(GridCells.Fixed(4),contentPadding=PaddingValues(vertical=16.dp),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){items(list){x->Card(Modifier.aspectRatio(1f).clickable{choose(x)},shape=RoundedCornerShape(20.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Column(horizontalAlignment=Alignment.CenterHorizontally){SchoolLetter(x.letter,34);if(x.letter.toString() in learned)Text("⭐",fontSize=13.sp)}}}}}}}
-@Composable fun LetterPage(x:LetterItem,speak:(String)->Unit,back:()->Unit,learned:()->Unit){Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Letters")};Row(verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(18.dp)){SchoolLetter(x.letter,76);Text(x.letter.lowercaseChar().toString(),fontSize=54.sp,fontWeight=FontWeight.Black)};Text(x.emoji,fontSize=72.sp);Text(x.letter.toString()+" is for "+x.word,fontSize=30.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center);BigButton("🔊 Hear it"){speak(x.letter.toString()+". "+x.letter+" is for "+x.word)};BigButton("⭐ I learned this!"){learned()}}}
+@Composable fun LetterPage(x:LetterItem,speak:(String)->Unit,back:()->Unit,learned:()->Unit){Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Letters")};Row(verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(18.dp)){SchoolLetter(x.letter,76);Text(x.letter.lowercaseChar().toString(),fontSize=54.sp,fontWeight=FontWeight.Black)};SpringfieldArt(x.word,x.emoji);Text(x.letter.toString()+" is for "+x.word,fontSize=30.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center);BigButton("🔊 Hear it"){speak(x.letter.toString()+". "+x.letter+" is for "+x.word)};BigButton("⭐ I learned this!"){learned()}}}
 @Composable fun Quiz(list:List<LetterItem>,speak:(String)->Unit,reward:()->Unit,back:()->Unit){var target by remember{mutableStateOf(list.random())};var choices by remember{mutableStateOf((list.filter{it!=target}.shuffled().take(3)+target).shuffled())};fun next(){target=list.random();choices=(list.filter{it!=target}.shuffled().take(3)+target).shuffled()};Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(20.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Home")};Text("Find the letter",fontSize=32.sp,fontWeight=FontWeight.Black);Text("Tap "+target.letter,fontSize=28.sp);Button({speak("Find the letter "+target.letter)}){Text("🔊 Listen")};choices.forEach{c->BigButton(c.letter.toString()){if(c==target){reward();speak("Well done!");next()}else speak("Try again")}}}}
 
 @Composable fun MatchGame(list:List<LetterItem>,speak:(String)->Unit,reward:()->Unit,back:()->Unit){var target by remember{mutableStateOf(list.random())};var choices by remember{mutableStateOf((list.filter{it!=target}.shuffled().take(3)+target).shuffled())};fun next(){target=list.random();choices=(list.filter{it!=target}.shuffled().take(3)+target).shuffled()};Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Home")};Text("🧩 Match It",fontSize=32.sp,fontWeight=FontWeight.Black);Text("Which word starts with "+target.letter+"?",fontSize=25.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center);choices.forEach{c->BigButton(c.emoji+"  "+c.word){if(c==target){reward();speak("Brilliant! "+c.word+" starts with "+c.letter);next()}else speak("Nearly. Try another one")}}}}
@@ -75,3 +76,31 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 @Composable fun TracePage(x:LetterItem,back:()->Unit,done:()->Unit){var points by remember(x.letter){mutableStateOf(listOf<Offset>())};Column(Modifier.fillMaxSize().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(14.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Letters")};Text("✏️ Trace "+x.letter,fontSize=30.sp,fontWeight=FontWeight.Black);Text("Follow the big letter with your finger",fontSize=17.sp);Box(Modifier.fillMaxWidth().height(360.dp).background(MaterialTheme.colorScheme.surfaceVariant,RoundedCornerShape(24.dp))){Text(x.letter.toString(),Modifier.align(Alignment.Center),fontSize=250.sp,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f));Canvas(Modifier.fillMaxSize().pointerInput(x.letter){detectDragGestures(onDragStart={points=listOf(it)},onDrag={change,_->points=points+change.position})}){if(points.size>1){val path=Path();path.moveTo(points.first().x,points.first().y);points.drop(1).forEach{path.lineTo(it.x,it.y)};drawPath(path,Color(0xFF00A896),style=Stroke(width=18f,cap=StrokeCap.Round))}}};Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){Button({points=emptyList()}){Text("↻ Clear")};Button({done();points=emptyList()}){Text("⭐ Done!")}}}}
 
 @Composable fun SchoolLetter(letter:Char,size:Int){if(letter.toString()=="I"){Column(horizontalAlignment=Alignment.CenterHorizontally){Box(Modifier.width((size*0.65).dp).height(5.dp).background(MaterialTheme.colorScheme.onSurface));Box(Modifier.width(5.dp).height((size*0.72).dp).background(MaterialTheme.colorScheme.onSurface));Box(Modifier.width((size*0.65).dp).height(5.dp).background(MaterialTheme.colorScheme.onSurface))}}else Text(letter.toString(),fontSize=size.sp,fontWeight=FontWeight.Black)}
+
+@Composable fun SpringfieldArt(name:String,fallback:String){
+ val characterNames=setOf("Apu","Bart","Comic Book Guy","Flanders","Grandpa","Homer","Itchy","Jimbo","Krusty","Lisa","Marge","Ned","Otto","Patty","Quimby","Ralph","Üter","Van Houten","Wiggum")
+ if(name !in characterNames){Text(fallback,fontSize=72.sp);return}
+ Card(shape=RoundedCornerShape(28.dp),colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF3B0))){
+  Canvas(Modifier.size(190.dp).padding(12.dp)){drawSpringfieldFigure(name)}
+ }
+}
+fun DrawScope.drawSpringfieldFigure(name:String){
+ val w=size.width; val h=size.height
+ val skin=Color(0xFFF2B56B); val ink=Color(0xFF303030)
+ fun circle(x:Float,y:Float,r:Float,c:Color){drawCircle(c,r,Offset(w*x,h*y))}
+ fun line(x1:Float,y1:Float,x2:Float,y2:Float,width:Float=8f,c:Color=ink){drawLine(c,Offset(w*x1,h*y1),Offset(w*x2,h*y2),width,StrokeCap.Round)}
+ val body=when(name){"Homer"->Color(0xFFF4F4F4);"Bart"->Color(0xFFE74C3C);"Lisa"->Color(0xFFE85D3F);"Krusty"->Color(0xFF9C6ADE);"Wiggum"->Color(0xFF4A78C2);"Itchy"->Color(0xFF78A6B8);"Marge"->Color(0xFF62A9D8);else->Color(0xFF66A36F)}
+ circle(.5f,.32f,.18f,if(name=="Itchy") Color(0xFF8799A6) else skin)
+ drawRoundRect(body,Offset(w*.32f,h*.50f),androidx.compose.ui.geometry.Size(w*.36f,h*.35f),androidx.compose.ui.geometry.CornerRadius(22f,22f))
+ circle(.44f,.29f,.025f,Color.White);circle(.56f,.29f,.025f,Color.White);circle(.44f,.29f,.010f,ink);circle(.56f,.29f,.010f,ink)
+ line(.44f,.39f,.56f,.39f,5f)
+ line(.38f,.82f,.34f,.98f);line(.62f,.82f,.66f,.98f)
+ if(name=="Bart"){for(i in 0..5)line(.36f+i*.055f,.17f,.39f+i*.045f,.08f,6f)}
+ if(name=="Homer"){line(.43f,.15f,.46f,.08f,4f);line(.49f,.14f,.52f,.07f,4f);circle(.76f,.68f,.10f,Color(0xFFD98B55));circle(.76f,.68f,.045f,Color(0xFFFFF3B0))}
+ if(name=="Itchy"){circle(.34f,.16f,.075f,Color(0xFF8799A6));circle(.66f,.16f,.075f,Color(0xFF8799A6));line(.67f,.68f,.90f,.56f,5f,Color(0xFF8799A6))}
+ if(name=="Lisa"){for(i in 0..7){val a=i*0.785f;line(.5f,.16f,.5f+kotlin.math.cos(a)*.18f,.16f+kotlin.math.sin(a)*.12f,6f)};line(.72f,.58f,.84f,.90f,9f,Color(0xFFC89B45))}
+ if(name=="Marge"){drawOval(Color(0xFF4E73C8),Offset(w*.37f,-h*.05f),androidx.compose.ui.geometry.Size(w*.26f,h*.32f))}
+ if(name=="Krusty"){circle(.32f,.20f,.09f,Color(0xFF6FA66F));circle(.68f,.20f,.09f,Color(0xFF6FA66F));circle(.5f,.35f,.035f,Color(0xFFE34C4C))}
+ if(name=="Wiggum"){drawRect(Color(0xFF315A99),Offset(w*.34f,h*.10f),androidx.compose.ui.geometry.Size(w*.32f,h*.07f));circle(.5f,.13f,.035f,Color(0xFFE3B341))}
+ if(name=="Flanders"||name=="Ned"){line(.40f,.38f,.60f,.38f,10f,Color(0xFF6B3F24));line(.38f,.28f,.47f,.28f,3f);line(.53f,.28f,.62f,.28f,3f)}
+}
