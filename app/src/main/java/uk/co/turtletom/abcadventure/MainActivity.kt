@@ -2,6 +2,7 @@ package uk.co.turtletom.abcadventure
 
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -28,27 +29,28 @@ private val springfield = listOf("Apu","Bart","Comic Book Guy","Donut","Evergree
 
 class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
  private lateinit var tts: TextToSpeech
- override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); tts=TextToSpeech(this,this); setContent { App { tts.speak(it,TextToSpeech.QUEUE_FLUSH,null,"abc") } } }
+ override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); tts=TextToSpeech(this,this); setContent { App(this) { tts.speak(it,TextToSpeech.QUEUE_FLUSH,null,"abc") } } }
  override fun onInit(status:Int) { if(status==TextToSpeech.SUCCESS) tts.language=Locale.UK }
  override fun onDestroy(){ tts.shutdown(); super.onDestroy() }
 }
 
-@Composable fun App(speak:(String)->Unit) {
- val themed=BuildConfig.EDITION=="SPRINGFIELD"; val words=if(themed) springfield else normal
+@Composable fun App(context:Context,speak:(String)->Unit) {
+ val prefs=remember{context.getSharedPreferences("abc_settings",Context.MODE_PRIVATE)}
+ var themed by remember{mutableStateOf(prefs.getBoolean("springfield",false))}; val words=if(themed) springfield else normal
  val letters=('A'..'Z').mapIndexed{i,c->LetterItem(c,words[i],if(themed)"⭐" else pics[i])}
  var page by remember{mutableStateOf("home")}; var chosen by remember{mutableStateOf(letters.first())}; var stars by remember{mutableIntStateOf(0)}
  MaterialTheme(colorScheme=if(themed) lightColorScheme(primary=Color(0xFF1976D2),secondary=Color(0xFFFFD600)) else lightColorScheme(primary=Color(0xFF5B5BD6))) {
   Surface(Modifier.fillMaxSize()) { when(page) {
-   "home"->Home(themed,stars){page=it}
+   "home"->Home(themed,stars,{ page=it },{ themed=it; prefs.edit().putBoolean("springfield",it).apply() })
    "learn"->Letters(letters,{page="home"}){chosen=it;page="letter"}
    "letter"->LetterPage(chosen,speak,{page="learn"}){stars++;page="learn"}
    else->Quiz(letters,speak,{stars++},{page="home"})
   }}
  }
 }
-@Composable fun Home(themed:Boolean,stars:Int,go:(String)->Unit){ Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){
+@Composable fun Home(themed:Boolean,stars:Int,go:(String)->Unit,setTheme:(Boolean)->Unit){ Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){
  Spacer(Modifier.height(20.dp)); Text(if(themed)"Springfield ABC" else "ABC Adventure",fontSize=36.sp,fontWeight=FontWeight.Black,textAlign=TextAlign.Center)
- Text(if(themed)"A fun Springfield alphabet" else "Learn • Listen • Play",fontSize=18.sp); Text("⭐ "+stars+" stars",fontSize=22.sp,fontWeight=FontWeight.Bold)
+ Text(if(themed)"A fun Springfield alphabet" else "Learn • Listen • Play",fontSize=18.sp); Row(verticalAlignment=Alignment.CenterVertically){Text("ABC Adventure");Switch(checked=themed,onCheckedChange=setTheme);Text("Springfield")}; Text("⭐ "+stars+" stars",fontSize=22.sp,fontWeight=FontWeight.Bold)
  BigButton("🔤  Learn A–Z"){go("learn")}; BigButton("🔊  Letter Sounds"){go("learn")}; BigButton("🎯  Find the Letter"){go("quiz")}; Text("Tracing and matching coming next",color=Color.Gray)
 }}
 @Composable fun BigButton(text:String,onClick:()->Unit)=Button(onClick,Modifier.fillMaxWidth().height(72.dp),shape=RoundedCornerShape(22.dp)){Text(text,fontSize=22.sp)}
