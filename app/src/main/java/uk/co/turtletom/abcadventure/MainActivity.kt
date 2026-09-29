@@ -73,7 +73,45 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
 @Composable fun MatchGame(list:List<LetterItem>,speak:(String)->Unit,reward:()->Unit,back:()->Unit){var target by remember{mutableStateOf(list.random())};var choices by remember{mutableStateOf((list.filter{it!=target}.shuffled().take(3)+target).shuffled())};fun next(){target=list.random();choices=(list.filter{it!=target}.shuffled().take(3)+target).shuffled()};Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Home")};Text("🧩 Match It",fontSize=32.sp,fontWeight=FontWeight.Black);Text("Which word starts with "+target.letter+"?",fontSize=25.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center);choices.forEach{c->BigButton(c.emoji+"  "+c.word){if(c==target){reward();speak("Brilliant! "+c.word+" starts with "+c.letter);next()}else speak("Nearly. Try another one")}}}}
 
-@Composable fun TracePage(x:LetterItem,back:()->Unit,done:()->Unit){var points by remember(x.letter){mutableStateOf(listOf<Offset>())};Column(Modifier.fillMaxSize().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(14.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Letters")};Text("✏️ Trace "+x.letter,fontSize=30.sp,fontWeight=FontWeight.Black);Text("Follow the big letter with your finger",fontSize=17.sp);Box(Modifier.fillMaxWidth().height(360.dp).background(MaterialTheme.colorScheme.surfaceVariant,RoundedCornerShape(24.dp))){Text(x.letter.toString(),Modifier.align(Alignment.Center),fontSize=250.sp,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.12f));Canvas(Modifier.fillMaxSize().pointerInput(x.letter){detectDragGestures(onDragStart={points=listOf(it)},onDrag={change,_->points=points+change.position})}){if(points.size>1){val path=Path();path.moveTo(points.first().x,points.first().y);points.drop(1).forEach{path.lineTo(it.x,it.y)};drawPath(path,Color(0xFF00A896),style=Stroke(width=18f,cap=StrokeCap.Round))}}};Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){Button({points=emptyList()}){Text("↻ Clear")};Button({done();points=emptyList()}){Text("⭐ Done!")}}}}
+@Composable fun TracePage(x:LetterItem,back:()->Unit,done:()->Unit){
+ var points by remember(x.letter){mutableStateOf(listOf<Offset>())}
+ var progress by remember(x.letter){mutableIntStateOf(0)}
+ var misses by remember(x.letter){mutableIntStateOf(0)}
+ var message by remember(x.letter){mutableStateOf("Start on the green dot and trace to the red dot")}
+ fun guide(w:Float,h:Float)=if(x.letter=='I') listOf(Offset(w*.30f,h*.20f),Offset(w*.70f,h*.20f),Offset(w*.50f,h*.20f),Offset(w*.50f,h*.80f),Offset(w*.30f,h*.80f),Offset(w*.70f,h*.80f)) else listOf(Offset(w*.32f,h*.72f),Offset(w*.50f,h*.20f),Offset(w*.68f,h*.72f),Offset(w*.40f,h*.52f),Offset(w*.60f,h*.52f))
+ Column(Modifier.fillMaxSize().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
+  TextButton(back,Modifier.align(Alignment.Start)){Text("← Letters")}
+  Text("✏️ Trace "+x.letter,fontSize=30.sp,fontWeight=FontWeight.Black)
+  Text(message,fontSize=17.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center)
+  LinearProgressIndicator(progress={progress/100f},Modifier.fillMaxWidth().height(10.dp))
+  Text(progress.toString()+"% complete",fontWeight=FontWeight.Bold)
+  Box(Modifier.fillMaxWidth().height(360.dp).background(MaterialTheme.colorScheme.surfaceVariant,RoundedCornerShape(24.dp))){
+   Text(x.letter.toString(),Modifier.align(Alignment.Center),fontSize=250.sp,fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.13f))
+   Canvas(Modifier.fillMaxSize().pointerInput(x.letter){
+    detectDragGestures(
+     onDragStart={p->points=listOf(p);progress=0;misses=0;message="Good — follow the dotted route"},
+     onDrag={change,_->points=points+change.position},
+     onDragEnd={message=if(progress>=85&&misses<12)"Brilliant tracing! ⭐" else "Nearly — stay on the guide and try again"}
+    )
+   }){
+    val g=guide(size.width,size.height)
+    g.forEachIndexed{i,p->drawCircle(if(i==0)Color(0xFF2EAD5B) else if(i==g.lastIndex)Color(0xFFE74C3C) else Color(0xFF7A7A7A),if(i==0||i==g.lastIndex)14f else 8f,p)}
+    for(i in 0 until g.lastIndex) drawLine(Color(0xFF8B8B8B),g[i],g[i+1],5f,StrokeCap.Round)
+    if(points.size>1){val path=Path();path.moveTo(points.first().x,points.first().y);points.drop(1).forEach{path.lineTo(it.x,it.y)};drawPath(path,Color(0xFF00A896),style=Stroke(width=18f,cap=StrokeCap.Round))
+     var hit=0;var off=0
+     points.forEach{p->val d=g.minOf{q->kotlin.math.sqrt((p.x-q.x)*(p.x-q.x)+(p.y-q.y)*(p.y-q.y))};if(d<95f)hit++ else off++}
+     val calc=((hit.toFloat()/points.size)*100).toInt().coerceIn(0,100)
+     if(calc!=progress||off/8!=misses){progress=calc;misses=off/8}
+    }
+   }
+  }
+  if(misses>2) Text("↩️ Move back towards the dotted guide",color=MaterialTheme.colorScheme.error,fontWeight=FontWeight.Bold)
+  Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
+   Button({points=emptyList();progress=0;misses=0;message="Start on the green dot and trace to the red dot"}){Text("↻ Clear")}
+   Button({done();points=emptyList();progress=0;misses=0;message="⭐ Great job! Choose another when you're ready."},enabled=progress>=85&&misses<12){Text(if(progress>=85&&misses<12)"⭐ Claim star" else "🔒 Keep tracing")}
+  }
+ }
+}
 
 @Composable fun SchoolLetter(letter:Char,size:Int){if(letter.toString()=="I"){Column(horizontalAlignment=Alignment.CenterHorizontally){Box(Modifier.width((size*0.65).dp).height(5.dp).background(MaterialTheme.colorScheme.onSurface));Box(Modifier.width(5.dp).height((size*0.72).dp).background(MaterialTheme.colorScheme.onSurface));Box(Modifier.width((size*0.65).dp).height(5.dp).background(MaterialTheme.colorScheme.onSurface))}}else Text(letter.toString(),fontSize=size.sp,fontWeight=FontWeight.Black)}
 
