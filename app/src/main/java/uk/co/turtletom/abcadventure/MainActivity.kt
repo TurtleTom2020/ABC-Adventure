@@ -36,24 +36,27 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
 @Composable fun App(context:Context,speak:(String)->Unit) {
  val prefs=remember{context.getSharedPreferences("abc_settings",Context.MODE_PRIVATE)}
- var themed by remember{mutableStateOf(prefs.getBoolean("springfield",false))}; val words=if(themed) springfield else normal
+ var themed by remember{mutableStateOf(prefs.getBoolean("springfield",false))}; var stars by remember{mutableIntStateOf(prefs.getInt("stars",0))}; val words=if(themed) springfield else normal
  val letters=('A'..'Z').mapIndexed{i,c->LetterItem(c,words[i],if(themed)"⭐" else pics[i])}
- var page by remember{mutableStateOf("home")}; var chosen by remember{mutableStateOf(letters.first())}; var stars by remember{mutableIntStateOf(0)}
+ var page by remember{mutableStateOf("home")}; var chosen by remember{mutableStateOf(letters.first())}
  MaterialTheme(colorScheme=if(themed) lightColorScheme(primary=Color(0xFF1976D2),secondary=Color(0xFFFFD600)) else lightColorScheme(primary=Color(0xFF5B5BD6))) {
   Surface(Modifier.fillMaxSize()) { when(page) {
    "home"->Home(themed,stars,{ page=it },{ themed=it; prefs.edit().putBoolean("springfield",it).apply() })
    "learn"->Letters(letters,{page="home"}){chosen=it;page="letter"}
-   "letter"->LetterPage(chosen,speak,{page="learn"}){stars++;page="learn"}
-   else->Quiz(letters,speak,{stars++},{page="home"})
+   "letter"->LetterPage(chosen,speak,{page="learn"}){stars++;prefs.edit().putInt("stars",stars).apply();page="learn"}
+   "quiz"->Quiz(letters,speak,{stars++;prefs.edit().putInt("stars",stars).apply()},{page="home"})
+   else->MatchGame(letters,speak,{stars++;prefs.edit().putInt("stars",stars).apply()},{page="home"})
   }}
  }
 }
 @Composable fun Home(themed:Boolean,stars:Int,go:(String)->Unit,setTheme:(Boolean)->Unit){ Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){
  Spacer(Modifier.height(20.dp)); Text(if(themed)"Springfield ABC" else "ABC Adventure",fontSize=36.sp,fontWeight=FontWeight.Black,textAlign=TextAlign.Center)
  Text(if(themed)"A fun Springfield alphabet" else "Learn • Listen • Play",fontSize=18.sp); Row(verticalAlignment=Alignment.CenterVertically){Text("ABC Adventure");Switch(checked=themed,onCheckedChange=setTheme);Text("Springfield")}; Text("⭐ "+stars+" stars",fontSize=22.sp,fontWeight=FontWeight.Bold)
- BigButton("🔤  Learn A–Z"){go("learn")}; BigButton("🔊  Letter Sounds"){go("learn")}; BigButton("🎯  Find the Letter"){go("quiz")}; Text("Tracing and matching coming next",color=Color.Gray)
+ BigButton("🔤  Learn A–Z"){go("learn")}; BigButton("🔊  Letter Sounds"){go("learn")}; BigButton("🎯  Find the Letter"){go("quiz")}; BigButton("🧩  Match It"){go("match")}; Text("Writing practice coming next",color=Color.Gray)
 }}
 @Composable fun BigButton(text:String,onClick:()->Unit)=Button(onClick,Modifier.fillMaxWidth().height(72.dp),shape=RoundedCornerShape(22.dp)){Text(text,fontSize=22.sp)}
 @Composable fun Letters(list:List<LetterItem>,back:()->Unit,choose:(LetterItem)->Unit){Column(Modifier.fillMaxSize().padding(16.dp)){TextButton(back){Text("← Home")};Text("Choose a letter",fontSize=30.sp,fontWeight=FontWeight.Bold);LazyVerticalGrid(GridCells.Fixed(4),contentPadding=PaddingValues(vertical=16.dp),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){items(list){x->Card(Modifier.aspectRatio(1f).clickable{choose(x)}){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text(x.letter.toString(),fontSize=34.sp,fontWeight=FontWeight.Black)}}}}}}
 @Composable fun LetterPage(x:LetterItem,speak:(String)->Unit,back:()->Unit,learned:()->Unit){Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Letters")};Text(x.letter.toString()+" "+x.letter.lowercaseChar(),fontSize=76.sp,fontWeight=FontWeight.Black);Text(x.emoji,fontSize=72.sp);Text(x.letter.toString()+" is for "+x.word,fontSize=30.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center);BigButton("🔊 Hear it"){speak(x.letter.toString()+". "+x.letter+" is for "+x.word)};BigButton("⭐ I learned this!"){learned()}}}
 @Composable fun Quiz(list:List<LetterItem>,speak:(String)->Unit,reward:()->Unit,back:()->Unit){var target by remember{mutableStateOf(list.random())};var choices by remember{mutableStateOf((list.filter{it!=target}.shuffled().take(3)+target).shuffled())};fun next(){target=list.random();choices=(list.filter{it!=target}.shuffled().take(3)+target).shuffled()};Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(20.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Home")};Text("Find the letter",fontSize=32.sp,fontWeight=FontWeight.Black);Text("Tap "+target.letter,fontSize=28.sp);Button({speak("Find the letter "+target.letter)}){Text("🔊 Listen")};choices.forEach{c->BigButton(c.letter.toString()){if(c==target){reward();speak("Well done!");next()}else speak("Try again")}}}}
+
+@Composable fun MatchGame(list:List<LetterItem>,speak:(String)->Unit,reward:()->Unit,back:()->Unit){var target by remember{mutableStateOf(list.random())};var choices by remember{mutableStateOf((list.filter{it!=target}.shuffled().take(3)+target).shuffled())};fun next(){target=list.random();choices=(list.filter{it!=target}.shuffled().take(3)+target).shuffled()};Column(Modifier.fillMaxSize().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(18.dp)){TextButton(back,Modifier.align(Alignment.Start)){Text("← Home")};Text("🧩 Match It",fontSize=32.sp,fontWeight=FontWeight.Black);Text("Which word starts with "+target.letter+"?",fontSize=25.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center);choices.forEach{c->BigButton(c.emoji+"  "+c.word){if(c==target){reward();speak("Brilliant! "+c.word+" starts with "+c.letter);next()}else speak("Nearly. Try another one")}}}}
